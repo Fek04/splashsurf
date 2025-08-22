@@ -198,6 +198,35 @@ def test_with_post_processing():
     
     assert(np.allclose(binary_verts, python_verts))
 
+
+def test_mesh_attributes():
+    particles = np.array([[0.0, 0.0, 0.0]])
+    attributes = {
+        #"int": np.array([1, 2], dtype=np.uint), # Interpolation not supported for ints
+        "float": np.array([1.0]),
+        "vec": np.array([[1.0, 1.0, 1.0]]),
+    }
+
+    mesh_with_data, _ = pysplashsurf.reconstruction_pipeline(particles, attributes_to_interpolate=attributes,
+                                                             particle_radius=1.0, cube_size=5.0)
+
+    int_attr = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint)
+    mesh_with_data.push_point_attribute("int", int_attr)
+    assert(mesh_with_data.get_point_attribute("int").dtype == np.uint)
+    assert(np.allclose(mesh_with_data.get_point_attribute("int"), int_attr))
+
+    float_attr = np.array([1., 2., 3., 4., 5., 6.])
+    mesh_with_data.push_point_attribute("float_attr", float_attr)
+    assert(mesh_with_data.get_point_attribute("float_attr").dtype == np.float64)
+    assert(np.allclose(mesh_with_data.get_point_attribute("float_attr"), float_attr))
+
+    vec_attr = np.array([[1.0, 1.0, 1.0]])
+    mesh_with_data.push_point_attribute("vec_attr", vec_attr)
+    assert(mesh_with_data.get_point_attribute("vec_attr").shape == (1, 3))
+    assert(np.allclose(mesh_with_data.get_point_attribute("vec_attr"), vec_attr))
+
+
+# test_mesh_attributes()
 # test_bgeo()
 # test_aabb_class()
 # test_marching_cubes_calls()

@@ -1,4 +1,4 @@
-use ndarray::{Array2, ArrayView, ArrayView2};
+use ndarray::{Array1, Array2, ArrayView, ArrayView2};
 use numpy::{Element, IntoPyArray, PyArray, PyArray2, PyArrayMethods, PyReadonlyArray2, ToPyArray};
 use pyo3::{
     IntoPyObjectExt,
@@ -29,8 +29,14 @@ where
     let elem = attrs.iter().filter(|x| x.name == name).next();
     match elem {
         Some(attr) => match attr.data.clone() {
-            AttributeData::ScalarU64(res) => Ok(res.into_pyobject(py).unwrap().into()),
-            AttributeData::ScalarReal(res) => Ok(res.into_pyobject(py).unwrap().into()),
+            AttributeData::ScalarU64(res) => {
+                let res: Array1<u64> = Array1::from_vec(res);
+                Ok(res.into_pyarray(py).into_bound_py_any(py).unwrap().into())
+            },
+            AttributeData::ScalarReal(res) => {
+                let res: Array1<R> = Array1::from_vec(res);
+                Ok(res.into_pyarray(py).into_bound_py_any(py).unwrap().into())
+            },
             AttributeData::Vector3Real(res) => {
                 let flattened: Vec<R> = bytemuck::cast_vec(res);
                 let res: Array2<R> =
