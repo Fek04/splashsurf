@@ -18,7 +18,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::PathBuf;
-
+use splashsurf_lib::neighborhood_search::NeighborhoodList;
 // TODO: Detect smallest index type (i.e. check if ok to use i32 as index)
 
 static ARGS_IO: &str = "Input/output";
@@ -1013,8 +1013,40 @@ pub fn reconstruction_pipeline<I: Index, R: Real>(
     params: &splashsurf_lib::Parameters<R>,
     postprocessing: &ReconstructionPostprocessingParameters,
 ) -> Result<ReconstructionResult<I, R>, anyhow::Error> {
+    // Filter out particles
+    let filtered_particle_positions = if let Some(particle_aabb) = &params.particle_aabb {
+        profile!("filtering particles");
+
+        let mut particle_inside = Vec::with_capacity(particle_positions.len());
+        particle_positions
+            .par_iter()
+            .map(|p| particle_aabb.contains_point(p))
+            .collect_into_vec(&mut particle_inside);
+
+        // Collect filtered particles
+        let filtered_particles =
+            particle_positions
+                .iter()
+                .zip(particle_inside.iter().copied())
+                .filter(|(_, is_inside)| *is_inside)
+                .map(|(p, _)| *p)
+                .collect();
+
+        Cow::Owned(filtered_particles)
+    } else {
+        Cow::Borrowed(particle_positions)
+    };
+    let particle_positions = filtered_particle_positions.as_ref();
+
+    let params = {
+        let mut params = params.clone();
+        params.particle_aabb = None;
+
+        params
+    };
+
     // Perform the surface reconstruction
-    let reconstruction = splashsurf_lib::reconstruct_surface::<I, R>(particle_positions, params)?;
+    let reconstruction = splashsurf_lib::reconstruct_surface::<I, R>(particle_positions, &params)?;
 
     let reconstruction_output = if postprocessing.output_raw_mesh {
         Some(reconstruction.clone())
